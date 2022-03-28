@@ -1,1 +1,78 @@
+pipeline{
+
+
+agent any
+               tools {
+             maven "maven3.8.5"             
+}
+
+ triggers {
+       // poll scm
+  pollSCM ('* * * * *')
+     //Build periodically
+  //cron( '* * * *  *')
+   }
+  options {
+  timestamps()
+    buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
+}
+ 
+   
+   
+stages{
+//get the code from Git Hub
+     stage('checkoutcode'){
+    steps{
+   git branch: 'development', credentialsId: 'cf228a17-bb9e-4ca6-bef2-294fcca97253', 
+               url: 'https://github.com/Anil-devops-mithun-dec2021/maven-web-application.git'
+           }
+        }
+    
+    //Build
+  stage('MavenBuild'){
+     steps{          
+       sh "mvn clean package"
+        }
+   }
+       //Execute SonarQubeReport
+         stage('ExecuteSonarQubeReport'){
+          
+          steps{
+                   sh "mvn sonar:sonar"                
+               
+       }  
+  }
+
+   //Upload Artifacts into Artifactory repo  
+
+      stage('UploadArtifactsIntoNexus'){
+   steps{ 
+           sh "mvn deploy"
+    }
+}
+ //Deploy App intoTomcat server
+   stage('DeployAppIntotomcatserver'){
+   steps{
+  sshagent(['5092734d-209e-4267-8a62-2112e88446d4']){
+
+   sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war   ec2-user@13.126.20.179:/opt/apache-tomcat-9.0.60/webapps/"
+      }
+   }
+     }
+
+
+}//stages closing
+}//pipeline closing
+
+
+
+
+
+
+
+
+
+
+
+
 
